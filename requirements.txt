@@ -1,0 +1,9 @@
+# Dépendances pour l'agent CV
+langchain-mistralai
+langchain-huggingface
+langchain-postgres
+langchain-community
+langgraph
+psycopg2-binary
+sentence-transformers
+pypdf
