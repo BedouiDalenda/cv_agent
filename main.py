@@ -1,74 +1,71 @@
-"""Point d'entrée et tests pour l'agent CV"""
-
+# main.py
+"""Point d'entrée principal pour l'agent CV - Version corrigée"""
 import os
-from agent import CVAgent
+from langchain_core.messages import HumanMessage, AIMessage
+from models import CVAgentState
+from graph import create_cv_agent_graph
 
-def test_cv_processing():
-    """Test du traitement d'un CV"""
-    print("📄 Test 1: Traitement d'un CV")
-    cv_path = r"C:\Users\ASUS\Desktop\stage\cv\BedouiDalenda.pdf"
+def run_cv_agent(query: str) -> str:
+    """Exécute l'agent CV avec une requête"""
     
-    if os.path.exists(cv_path):
-        agent = CVAgent()
-        result = agent.process_cv(cv_path)
-        print("Résultat:", result["messages"][-1].content)
-        return True
-    else:
-        print("❌ Fichier CV non trouvé")
-        return False
-
-def test_cv_search():
-    """Test de recherche de CV"""
-    print("\n🔍 Test 2: Recherche de compétences")
-    agent = CVAgent()
-    result = agent.search_cvs("Python développeur")
-    print("Résultat:", result["messages"][-1].content)
-
-def test_general_chat():
-    """Test du chat général"""
-    print("\n💬 Test 3: Chat général")
-    agent = CVAgent()
-    response = agent.chat("Que peux-tu faire avec les CV?")
-    print("Réponse:", response)
-
-def interactive_mode():
-    """Interface interactive"""
-    print("\n🔄 Interface interactive (tapez 'quit' pour quitter)")
-    agent = CVAgent()
+    print(f"🚀 Démarrage agent pour: '{query}'")
     
-    while True:
-        user_input = input("\nVous: ")
-        if user_input.lower() in ['quit', 'exit', 'q']:
-            break
+    # Créer le graphe
+    app = create_cv_agent_graph()
+    
+    # État initial avec le bon format de message
+    initial_state = CVAgentState(
+        messages=[HumanMessage(content=query)],  # Utiliser HumanMessage directement
+        query=query,
+        query_type="",
+        cv_path=None,
+        cv_content=None,
+        cv_hash=None,
+        cv_exists=False,
+        cv_data=None,
+        sql_query=None,
+        search_results=None,
+        error=None
+    )
+    
+    # Exécuter le graphe
+    try:
+        print("⚡ Exécution du graphe...")
+        result = app.invoke(initial_state)
         
-        # Traitement spécial pour les chemins de fichiers CV
-        if user_input.startswith("cv:"):
-            cv_path = user_input[3:].strip()
-            if os.path.exists(cv_path):
-                result = agent.process_cv(cv_path)
-                print(f"Agent: {result['messages'][-1]['content']}")
-            else:
-                print("Agent: ❌ Fichier CV non trouvé")
+        print(f"📋 État final:")
+        print(f"  - Query type: {result.get('query_type')}")
+        print(f"  - SQL query: {result.get('sql_query')}")
+        print(f"  - Error: {result.get('error')}")
+        print(f"  - Messages count: {len(result.get('messages', []))}")
+        
+        # Retourner la dernière réponse de l'assistant
+        assistant_messages = []
+        for i, msg in enumerate(result["messages"]):
+            print(f"  Message {i}: {type(msg).__name__}")
+            # Vérifier si c'est un message AI
+            if hasattr(msg, 'content') and isinstance(msg, AIMessage):
+                assistant_messages.append(msg.content)
+                print(f"    -> AI Content: {msg.content[:100]}...")
+            elif hasattr(msg, 'content') and hasattr(msg, 'type') and msg.type == 'ai':
+                assistant_messages.append(msg.content)
+                print(f"    -> AI Content (type): {msg.content[:100]}...")
+        
+        if assistant_messages:
+            return assistant_messages[-1]
         else:
-            response = agent.chat(user_input)
-            print(f"Agent: {response}")
-
-def main():
-    """Fonction principale"""
-    print("🤖 Initialisation de l'agent CV...")
-    
-    # Exécuter les tests
-    cv_processed = test_cv_processing()
-    
-    if cv_processed:
-        test_cv_search()
-    
-    test_general_chat()
-    
-    # Interface interactive
-    interactive_mode()
-    
-    print("\n👋 Au revoir!")
+            return "Aucune réponse générée."
+            
+    except Exception as e:
+        error_msg = f"❌ Erreur d'exécution: {str(e)}"
+        print(error_msg)
+        return error_msg
 
 if __name__ == "__main__":
-    main()
+    # Tests
+    print("🤖 Agent CV démarré!\n")
+    
+    # Test: Autre recherche
+    print("Test : lister le contenu")
+    result3 = run_cv_agent("liste moi le contenu de la base ")
+    print(result3)
